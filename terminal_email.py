@@ -31,6 +31,7 @@ class TerminalEmail(object):
     """
     def __init__(self,
                  toaddr,
+                 credentials_file="",
                  subject="",
                  body="",
                  file_path=""):
@@ -39,6 +40,7 @@ class TerminalEmail(object):
         """
         self.msg = MIMEMultipart()
         self.toaddr = toaddr
+        self.credentials_file=credentials_file
         self.subject = subject
         self.body = body
         self.file_path = file_path
@@ -50,8 +52,8 @@ class TerminalEmail(object):
         """
         parse credentials json file if it exists
         """
-        if os.path.isfile("credentials.json"):
-            with open("credentials.json") as f:
+        if os.path.isfile(self.credentials_file):
+            with open(self.credentials_file) as f:
                 data = json.load(f)
             validator = Draft4Validator(CREDENTIALSCHEMA)
             try:
@@ -113,6 +115,10 @@ class TerminalEmail(object):
         parser = argparse.ArgumentParser(msg)
         parser.add_argument("toaddr",
                             help="Recipient address",
+                            action="store")
+        parser.add_argument("-c", "--credentials_file",
+                            help="Your email credentials json file",
+                            default="",
                             action="store")
         parser.add_argument("-s", "--subject",
                             help="Subject of email",
