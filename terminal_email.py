@@ -109,7 +109,8 @@ class TerminalEmail(object):
         """
         parse args
         """
-        parser = argparse.ArgumentParser()
+        msg = "Send emails straight from the command line"
+        parser = argparse.ArgumentParser(msg)
         parser.add_argument("toaddr",
                             help="Recipient address",
                             action="store")
