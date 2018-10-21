@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Tool to send emails and attachments through the terminal
 """
@@ -6,10 +7,22 @@ import argparse
 import json
 import getpass
 import os
+import sys
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
+from jsonschema import Draft4Validator, ValidationError
+from credentials_schema import CREDENTIALSCHEMA
+
+
+class TerminalEmailException(Exception):
+    """
+    Custom exception class for error
+    handling.
+    """
+    def __init__(self, error):
+        self.error = error
 
 
 class TerminalEmail(object):
@@ -40,8 +53,14 @@ class TerminalEmail(object):
         if os.path.isfile("credentials.json"):
             with open("credentials.json") as f:
                 data = json.load(f)
-            self.fromaddr = data["fromaddr"]
-            self.password = data["password"]
+            validator = Draft4Validator(CREDENTIALSCHEMA)
+            try:
+                validator.validate(data)
+            except ValidationError:
+                raise TerminalEmailException("Error validating credentials")
+            else:
+                self.fromaddr = data["fromaddr"]
+                self.password = data["password"]
         else:
             self.fromaddr = input("Enter your email\n")
             self.password = getpass.getpass("Enter email password\n")
@@ -75,10 +94,15 @@ class TerminalEmail(object):
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.ehlo()
         server.starttls()
-        server.login(self.fromaddr, self.password)
-        text = self.msg.as_string()
-        server.sendmail(self.fromaddr, self.toaddr, text)
-        server.quit()
+        try:
+            server.login(self.fromaddr, self.password)
+        except smtplib.SMTPAuthenticationError:
+            err_msg = "Invalid log in details"
+            raise TerminalEmailException(err_msg)
+        else:
+            text = self.msg.as_string()
+            server.sendmail(self.fromaddr, self.toaddr, text)
+            server.quit()
 
     @classmethod
     def __parse_args(cls):
@@ -91,12 +115,15 @@ class TerminalEmail(object):
                             action="store")
         parser.add_argument("-s", "--subject",
                             help="Subject of email",
+                            default="",
                             action="store")
         parser.add_argument("-b", "--body",
                             help="Body of email",
+                            default="",
                             action="store")
         parser.add_argument("-f", "--file_path",
                             help="File to send",
+                            default="",
                             action="store")
         args = parser.parse_args()
         return vars(args)
@@ -104,14 +131,22 @@ class TerminalEmail(object):
     @classmethod
     def main(cls):
         """
-        main
+        Main
         """
+        return_code = 0
         args = cls.__parse_args()
         obj = cls(**args)
-        obj.build_msg()
-        if os.path.isfile(obj.file_path):
-            obj.send_file()
-        obj.launch_server()
+        try:
+            obj.build_msg()
+            if os.path.isfile(obj.file_path):
+                obj.send_file()
+            obj.launch_server()
+        except TerminalEmailException as exp:
+            print(exp.error)
+            return_code = 1
+        return return_code
+
 
 if __name__ == "__main__":
-    TerminalEmail.main()
+    return_code = TerminalEmail.main()
+    sys.exit(return_code)
