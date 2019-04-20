@@ -40,7 +40,7 @@ class TerminalEmail(object):
         """
         self.msg = MIMEMultipart()
         self.toaddr = toaddr
-        self.credentials_file=credentials_file
+        self.credentials_file = credentials_file
         self.subject = subject
         self.body = body
         self.file_path = file_path
